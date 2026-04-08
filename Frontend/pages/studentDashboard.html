@@ -1,0 +1,60 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+<title>Student Dashboard</title>
+<link rel="stylesheet" href="../css/dashboard.css">
+</head>
+
+<body>
+
+<div class="navbar">
+<div class="brand-mark">
+<span class="brand-logo">SP</span>
+<div>
+<p class="brand-kicker">Student Workspace</p>
+<h2>Placement Portal</h2>
+</div>
+</div>
+
+<div class="nav-actions">
+<button onclick="logout()">Logout</button>
+</div>
+</div>
+
+<div class="container">
+
+<section class="dashboard-hero">
+<div>
+<p class="eyebrow">Opportunity board</p>
+<h1>Apply to eligible jobs and track your placement progress.</h1>
+<p>Review package details, CGPA criteria, and application status from the cards below.</p>
+</div>
+<div class="hero-badge">Student</div>
+</section>
+
+<section class="section-card">
+<div class="section-header">
+<h2>Eligible Jobs</h2>
+<span class="meta-pill">Matched roles</span>
+</div>
+
+<div id="jobs" class="job-list"></div>
+</section>
+
+<section class="section-card">
+<div class="section-header">
+<h2>Applied Jobs</h2>
+<span class="meta-pill">Your history</span>
+</div>
+
+<div id="appliedJobs" class="job-list"></div>
+</section>
+
+</div>
+
+<script src="../js/studentDashboard.js"></script>
+
+</body>
+
+</html>

@@ -1,0 +1,94 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+<title>Company Dashboard</title>
+<link rel="stylesheet" href="../css/dashboard.css">
+</head>
+
+<body>
+
+<div class="navbar">
+<div class="brand-mark">
+<span class="brand-logo">SP</span>
+<div>
+<p class="brand-kicker">Company Workspace</p>
+<h2>Recruiter Dashboard</h2>
+</div>
+</div>
+<button onclick="logout()">Logout</button>
+</div>
+
+<div class="container">
+
+<section class="dashboard-hero">
+<div>
+<p class="eyebrow">Recruitment desk</p>
+<h1>Create roles, set eligibility, and manage your posted opportunities.</h1>
+<p>Keep every placement drive clear with structured job details and quick review cards.</p>
+</div>
+<div class="hero-badge">Company</div>
+</section>
+
+<section class="section-card">
+<h2>Post New Job</h2>
+
+<form id="jobForm">
+
+<div class="form-grid">
+<div>
+<label for="title">Job Title</label>
+<input type="text" id="title" placeholder="Software Engineer" required>
+</div>
+
+<div>
+<label for="description">Description</label>
+<input type="text" id="description" placeholder="Role summary and responsibilities" required>
+</div>
+
+<div>
+<label for="package">Package LPA</label>
+<input type="number" id="package" placeholder="8" required>
+</div>
+
+<div>
+<label for="cgpa">Min CGPA</label>
+<input type="number" id="cgpa" placeholder="7" required>
+</div>
+
+<div class="full-width">
+<label for="branch">Branch Allowed</label>
+<input type="text" id="branch" placeholder="CSE, IT, ECE" required>
+</div>
+</div>
+
+<button type="submit">Post Job</button>
+
+</form>
+</section>
+
+<section class="section-card">
+<div class="section-header">
+<h2>Your Jobs</h2>
+<span class="meta-pill">Posted roles</span>
+</div>
+
+<div id="jobs" class="job-list"></div>
+</section>
+
+<section class="section-card">
+<div class="section-header">
+<h2>Student Applications</h2>
+<span class="meta-pill">Recruitment decisions</span>
+</div>
+
+<div id="applications" class="job-list"></div>
+</section>
+
+</div>
+
+<script src="../js/companyDashboard.js"></script>
+
+</body>
+
+</html>
