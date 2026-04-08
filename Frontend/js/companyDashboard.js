@@ -1,3 +1,5 @@
+const API_BASE = window.location.protocol === "file:" ? "http://localhost:5000" : "";
+
 const companyId = localStorage.getItem("companyId");
 
 if(!companyId){
@@ -16,7 +18,7 @@ const package_lpa = document.getElementById("package").value;
 const min_cgpa = document.getElementById("cgpa").value;
 const branch_allowed = document.getElementById("branch").value;
 
-await fetch("http://localhost:5000/api/companies/post-job",{
+await fetch(`${API_BASE}/api/companies/post-job`,{
 
 method:"POST",
 
@@ -72,7 +74,7 @@ return status;
 
 async function loadJobs(){
 
-const response = await fetch(`http://localhost:5000/api/companies/jobs/${companyId}`);
+const response = await fetch(`${API_BASE}/api/companies/jobs/${companyId}`);
 
 const jobs = await response.json();
 
@@ -109,7 +111,7 @@ jobsDiv.innerHTML+=`
 
 async function loadApplications(){
 
-const response = await fetch(`http://localhost:5000/api/companies/applications/${companyId}`);
+const response = await fetch(`${API_BASE}/api/companies/applications/${companyId}`);
 
 const applications = await response.json();
 
@@ -155,7 +157,7 @@ applicationsDiv.innerHTML += `
 
 async function updateApplicationStatus(applicationId, status){
 
-const response = await fetch("http://localhost:5000/api/companies/applications/status", {
+const response = await fetch(`${API_BASE}/api/companies/applications/status`, {
 method: "PUT",
 headers: {
 "Content-Type": "application/json"

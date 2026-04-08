@@ -1,3 +1,5 @@
+const API_BASE = window.location.protocol === "file:" ? "http://localhost:5000" : "";
+
 const studentId = localStorage.getItem("studentId");
 
 if(!studentId){
@@ -6,7 +8,7 @@ window.location.href = "studentLogin.html";
 
 async function loadJobs(){
 
-const response = await fetch(`http://localhost:5000/api/students/eligible-jobs/${studentId}`);
+const response = await fetch(`${API_BASE}/api/students/eligible-jobs/${studentId}`);
 
 const jobs = await response.json();
 
@@ -52,7 +54,7 @@ job.application_id
 
 async function applyJob(jobId){
 
-const response = await fetch("http://localhost:5000/api/students/apply-job",{
+const response = await fetch(`${API_BASE}/api/students/apply-job`,{
 
 method:"POST",
 
@@ -90,7 +92,7 @@ window.location.href = "studentLogin.html";
 
 async function loadAppliedJobs(){
 
-const response = await fetch(`http://localhost:5000/api/students/applied-jobs/${studentId}`);
+const response = await fetch(`${API_BASE}/api/students/applied-jobs/${studentId}`);
 
 const jobs = await response.json();
 

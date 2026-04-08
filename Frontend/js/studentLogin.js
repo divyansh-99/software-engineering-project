@@ -1,3 +1,5 @@
+const API_BASE = window.location.protocol === "file:" ? "http://localhost:5000" : "";
+
 const form = document.getElementById("loginForm");
 
 form.addEventListener("submit", async function(e){
@@ -9,7 +11,7 @@ form.addEventListener("submit", async function(e){
 
     try{
 
-        const response = await fetch("http://localhost:5000/api/students/login",{
+        const response = await fetch(`${API_BASE}/api/students/login`,{
             method:"POST",
             headers:{
                 "Content-Type":"application/json"

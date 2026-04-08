@@ -1,6 +1,8 @@
+const API_BASE = window.location.protocol === "file:" ? "http://localhost:5000" : "";
+
 async function loadStats(){
 
-const response = await fetch("http://localhost:5000/api/admin/stats");
+const response = await fetch(`${API_BASE}/api/admin/stats`);
 
 const data = await response.json();
 
@@ -29,7 +31,7 @@ loadStats();
 
 async function loadJobs(){
 
-const response = await fetch("http://localhost:5000/api/admin/jobs");
+const response = await fetch(`${API_BASE}/api/admin/jobs`);
 
 const jobs = await response.json();
 
