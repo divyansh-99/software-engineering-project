@@ -1,141 +1,135 @@
 const API_BASE = window.location.protocol === "file:" ? "http://localhost:5000" : "";
+const USE_DEMO_DATA = window.SPMSDataService && window.SPMSDataService.useDemo;
 
 const studentId = localStorage.getItem("studentId");
 
-if(!studentId){
-window.location.href = "studentLogin.html";
+if (!studentId) {
+  window.location.href = "studentLogin.html";
 }
 
-async function loadJobs(){
+function getStatusClass(status) {
+  if (status === "Accepted" || status === "Selected") {
+    return "status-pill status-accepted";
+  }
 
-const response = await fetch(`${API_BASE}/api/students/eligible-jobs/${studentId}`);
+  if (status === "Rejected") {
+    return "status-pill status-rejected";
+  }
 
-const jobs = await response.json();
-
-const jobsDiv = document.getElementById("jobs");
-
-jobsDiv.innerHTML = "";
-
-if(jobs.length === 0){
-
-jobsDiv.innerHTML = `<div class="empty-state">No eligible jobs are available right now.</div>`;
-return;
-
+  return "status-pill status-pending";
 }
 
-jobs.forEach(job => {
+function getStatusLabel(status) {
+  if (status === "Selected") {
+    return "Accepted";
+  }
 
-jobsDiv.innerHTML += `
+  if (status === "Applied") {
+    return "Pending";
+  }
+
+  return status;
+}
+
+async function loadJobs() {
+  let jobs;
+
+  if (USE_DEMO_DATA) {
+    jobs = await window.SPMSDataService.getEligibleJobs(studentId);
+  } else {
+    const response = await fetch(`${API_BASE}/api/students/eligible-jobs/${studentId}`);
+    jobs = await response.json();
+  }
+
+  const jobsDiv = document.getElementById("jobs");
+  jobsDiv.innerHTML = "";
+
+  if (jobs.length === 0) {
+    jobsDiv.innerHTML = `<div class="empty-state">No eligible jobs are available right now.</div>`;
+    return;
+  }
+
+  jobs.forEach((job) => {
+    jobsDiv.innerHTML += `
 <div class="job-card">
-
 <h3>${job.title}</h3>
-
 <p>${job.description}</p>
-
 <div class="job-meta">
 <span class="meta-pill">Package: ${job.package_lpa} LPA</span>
 <span class="meta-pill">Min CGPA: ${job.min_cgpa}</span>
 </div>
-
 ${
-job.application_id
-?
-"<span class='status-pill'>Already Applied</span>"
-:
-`<button onclick="applyJob(${job.job_id})">Apply</button>`
+  job.application_id
+    ? `<span class="${getStatusClass(job.application_status || "Applied")}">Status: ${getStatusLabel(job.application_status || "Applied")}</span>`
+    : `<button onclick="applyJob(${job.job_id})">Apply</button>`
 }
-
 </div>
 `;
-
-});
-
+  });
 }
 
-async function applyJob(jobId){
+async function applyJob(jobId) {
+  let data;
 
-const response = await fetch(`${API_BASE}/api/students/apply-job`,{
+  if (USE_DEMO_DATA) {
+    data = await window.SPMSDataService.applyJob({
+      student_id: studentId,
+      job_id: jobId
+    });
+  } else {
+    const response = await fetch(`${API_BASE}/api/students/apply-job`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json"
+      },
+      body: JSON.stringify({
+        student_id: studentId,
+        job_id: jobId
+      })
+    });
+    data = await response.json();
+  }
 
-method:"POST",
-
-headers:{
-"Content-Type":"application/json"
-},
-
-body: JSON.stringify({
-student_id: studentId,
-job_id: jobId
-})
-
-});
-
-const data = await response.json();
-
-alert(data.message);
-
-loadJobs();
-loadAppliedJobs();
-
+  alert(data.message);
+  loadJobs();
+  loadAppliedJobs();
 }
 
-loadJobs();
-loadAppliedJobs();
-
-
-function logout(){
-
-localStorage.removeItem("studentId");
-
-window.location.href = "studentLogin.html";
-
+function logout() {
+  localStorage.removeItem("studentId");
+  window.location.href = "studentLogin.html";
 }
 
-async function loadAppliedJobs(){
+async function loadAppliedJobs() {
+  let jobs;
 
-const response = await fetch(`${API_BASE}/api/students/applied-jobs/${studentId}`);
+  if (USE_DEMO_DATA) {
+    jobs = await window.SPMSDataService.getAppliedJobs(studentId);
+  } else {
+    const response = await fetch(`${API_BASE}/api/students/applied-jobs/${studentId}`);
+    jobs = await response.json();
+  }
 
-const jobs = await response.json();
+  const appliedDiv = document.getElementById("appliedJobs");
+  appliedDiv.innerHTML = "";
 
-const appliedDiv = document.getElementById("appliedJobs");
+  if (jobs.length === 0) {
+    appliedDiv.innerHTML = `<div class="empty-state">You have not applied to any jobs yet.</div>`;
+    return;
+  }
 
-appliedDiv.innerHTML = "";
-
-if(jobs.length === 0){
-
-appliedDiv.innerHTML = `<div class="empty-state">You have not applied to any jobs yet.</div>`;
-return;
-
-}
-
-function getStatusClass(status){
-
-if(status === "Accepted" || status === "Selected"){
-return "status-pill status-accepted";
-}
-
-if(status === "Rejected"){
-return "status-pill status-rejected";
-}
-
-return "status-pill status-pending";
-
-}
-
-jobs.forEach(job => {
-
-appliedDiv.innerHTML += `
+  jobs.forEach((job) => {
+    appliedDiv.innerHTML += `
 <div class="job-card">
-
 <h3>${job.title}</h3>
-
 <div class="job-meta">
 <span class="meta-pill">Package: ${job.package_lpa} LPA</span>
-<span class="${getStatusClass(job.status)}">Status: ${job.status}</span>
+<span class="${getStatusClass(job.status)}">Status: ${getStatusLabel(job.status)}</span>
 </div>
-
 </div>
 `;
-
-});
-
+  });
 }
+
+loadJobs();
+loadAppliedJobs();

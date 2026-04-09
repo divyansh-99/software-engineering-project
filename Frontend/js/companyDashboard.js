@@ -1,47 +1,41 @@
 const API_BASE = window.location.protocol === "file:" ? "http://localhost:5000" : "";
+const USE_DEMO_DATA = window.SPMSDataService && window.SPMSDataService.useDemo;
 
 const companyId = localStorage.getItem("companyId");
 
-if(!companyId){
-window.location.href="companyLogin.html";
+if (!companyId) {
+  window.location.href = "companyLogin.html";
 }
 
 const form = document.getElementById("jobForm");
 
-form.addEventListener("submit", async function(e){
+form.addEventListener("submit", async function (e) {
+  e.preventDefault();
 
-e.preventDefault();
+  const payload = {
+    company_id: companyId,
+    title: document.getElementById("title").value,
+    description: document.getElementById("description").value,
+    package_lpa: document.getElementById("package").value,
+    min_cgpa: document.getElementById("cgpa").value,
+    branch_allowed: document.getElementById("branch").value
+  };
 
-const title = document.getElementById("title").value;
-const description = document.getElementById("description").value;
-const package_lpa = document.getElementById("package").value;
-const min_cgpa = document.getElementById("cgpa").value;
-const branch_allowed = document.getElementById("branch").value;
+  if (USE_DEMO_DATA) {
+    await window.SPMSDataService.postJob(payload);
+  } else {
+    await fetch(`${API_BASE}/api/companies/post-job`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json"
+      },
+      body: JSON.stringify(payload)
+    });
+  }
 
-await fetch(`${API_BASE}/api/companies/post-job`,{
-
-method:"POST",
-
-headers:{
-"Content-Type":"application/json"
-},
-
-body: JSON.stringify({
-company_id:companyId,
-title,
-description,
-package_lpa,
-min_cgpa,
-branch_allowed
-})
-
-});
-
-form.reset();
-
-loadJobs();
-loadApplications();
-
+  form.reset();
+  loadJobs();
+  loadApplications();
 });
 
 function getStatusClass(status){
@@ -72,69 +66,60 @@ return status;
 
 }
 
-async function loadJobs(){
+async function loadJobs() {
+  let jobs;
 
-const response = await fetch(`${API_BASE}/api/companies/jobs/${companyId}`);
+  if (USE_DEMO_DATA) {
+    jobs = await window.SPMSDataService.getCompanyJobs(companyId);
+  } else {
+    const response = await fetch(`${API_BASE}/api/companies/jobs/${companyId}`);
+    jobs = await response.json();
+  }
 
-const jobs = await response.json();
+  const jobsDiv = document.getElementById("jobs");
+  jobsDiv.innerHTML = "";
 
-const jobsDiv=document.getElementById("jobs");
+  if (jobs.length === 0) {
+    jobsDiv.innerHTML = `<div class="empty-state">No jobs posted yet. Add your first role above.</div>`;
+    return;
+  }
 
-jobsDiv.innerHTML="";
-
-if(jobs.length === 0){
-
-jobsDiv.innerHTML = `<div class="empty-state">No jobs posted yet. Add your first role above.</div>`;
-return;
-
-}
-
-jobs.forEach(job=>{
-
-jobsDiv.innerHTML+=`
+  jobs.forEach((job) => {
+    jobsDiv.innerHTML += `
 <div class="job-card">
-
 <h3>${job.title}</h3>
-
 <p>${job.description}</p>
-
 <div class="job-meta">
 <span class="meta-pill">Package: ${job.package_lpa} LPA</span>
 </div>
-
 </div>
 `;
-
-});
-
+  });
 }
 
-async function loadApplications(){
+async function loadApplications() {
+  let applications;
 
-const response = await fetch(`${API_BASE}/api/companies/applications/${companyId}`);
+  if (USE_DEMO_DATA) {
+    applications = await window.SPMSDataService.getCompanyApplications(companyId);
+  } else {
+    const response = await fetch(`${API_BASE}/api/companies/applications/${companyId}`);
+    applications = await response.json();
+  }
 
-const applications = await response.json();
+  const applicationsDiv = document.getElementById("applications");
+  applicationsDiv.innerHTML = "";
 
-const applicationsDiv = document.getElementById("applications");
+  if (applications.length === 0) {
+    applicationsDiv.innerHTML = `<div class="empty-state">No student applications have been received yet.</div>`;
+    return;
+  }
 
-applicationsDiv.innerHTML = "";
-
-if(applications.length === 0){
-
-applicationsDiv.innerHTML = `<div class="empty-state">No student applications have been received yet.</div>`;
-return;
-
-}
-
-applications.forEach(application => {
-
-applicationsDiv.innerHTML += `
+  applications.forEach((application) => {
+    applicationsDiv.innerHTML += `
 <div class="job-card">
-
 <h3>${application.student_name}</h3>
-
 <p>Applied for ${application.job_title}</p>
-
 <div class="job-meta">
 <span class="meta-pill">Email: ${application.student_email}</span>
 <span class="meta-pill">Roll No: ${application.roll_number}</span>
@@ -142,39 +127,41 @@ applicationsDiv.innerHTML += `
 <span class="meta-pill">CGPA: ${application.cgpa}</span>
 <span class="${getStatusClass(application.status)}">Status: ${getStatusLabel(application.status)}</span>
 </div>
-
 <div class="action-row">
 <button type="button" onclick="updateApplicationStatus(${application.application_id}, 'Accepted')">Accept</button>
 <button type="button" class="secondary-button" onclick="updateApplicationStatus(${application.application_id}, 'Rejected')">Reject</button>
 </div>
-
 </div>
 `;
-
-});
-
+  });
 }
 
-async function updateApplicationStatus(applicationId, status){
+async function updateApplicationStatus(applicationId, status) {
+  let data;
 
-const response = await fetch(`${API_BASE}/api/companies/applications/status`, {
-method: "PUT",
-headers: {
-"Content-Type": "application/json"
-},
-body: JSON.stringify({
-company_id: companyId,
-application_id: applicationId,
-status
-})
-});
+  if (USE_DEMO_DATA) {
+    data = await window.SPMSDataService.updateCompanyApplicationStatus({
+      company_id: companyId,
+      application_id: applicationId,
+      status
+    });
+  } else {
+    const response = await fetch(`${API_BASE}/api/companies/applications/status`, {
+      method: "PUT",
+      headers: {
+        "Content-Type": "application/json"
+      },
+      body: JSON.stringify({
+        company_id: companyId,
+        application_id: applicationId,
+        status
+      })
+    });
+    data = await response.json();
+  }
 
-const data = await response.json();
-
-alert(data.message);
-
-loadApplications();
-
+  alert(data.message);
+  loadApplications();
 }
 
 function logout(){

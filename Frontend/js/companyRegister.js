@@ -1,9 +1,9 @@
 const API_BASE = window.location.protocol === "file:" ? "http://localhost:5000" : "";
+const USE_DEMO_DATA = window.SPMSDataService && window.SPMSDataService.useDemo;
 
 const form = document.getElementById("registerForm");
 
 form.addEventListener("submit", async function (e) {
-
   e.preventDefault();
 
   const payload = {
@@ -13,18 +13,27 @@ form.addEventListener("submit", async function (e) {
   };
 
   try {
-    const response = await fetch(`${API_BASE}/api/companies/register`, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json"
-      },
-      body: JSON.stringify(payload)
-    });
+    let data;
+    let ok;
 
-    const data = await response.json();
+    if (USE_DEMO_DATA) {
+      data = await window.SPMSDataService.registerCompany(payload);
+      ok = data.ok;
+    } else {
+      const response = await fetch(`${API_BASE}/api/companies/register`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json"
+        },
+        body: JSON.stringify(payload)
+      });
+      data = await response.json();
+      ok = response.ok;
+    }
+
     document.getElementById("message").innerText = data.message;
 
-    if (response.ok) {
+    if (ok) {
       form.reset();
       setTimeout(() => {
         window.location.href = "companyLogin.html";
@@ -34,5 +43,4 @@ form.addEventListener("submit", async function (e) {
     console.error(error);
     document.getElementById("message").innerText = "Server error";
   }
-
 });
