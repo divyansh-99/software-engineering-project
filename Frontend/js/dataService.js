@@ -1,5 +1,5 @@
 (function () {
-  const STORAGE_KEY = "spms_demo_store";
+  const STORAGE_KEY = "spms_demo_store_v2";
   const useDemo = window.location.protocol !== "file:";
 
   function seedStore() {

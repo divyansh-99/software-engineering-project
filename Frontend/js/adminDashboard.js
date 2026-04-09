@@ -1,5 +1,10 @@
 const API_BASE = window.location.protocol === "file:" ? "http://localhost:5000" : "";
 const USE_DEMO_DATA = window.SPMSDataService && window.SPMSDataService.useDemo;
+const adminEmail = localStorage.getItem("adminEmail");
+
+if (!adminEmail) {
+  window.location.href = "adminLogin.html";
+}
 
 async function loadStats() {
   let data;
@@ -65,3 +70,8 @@ async function loadJobs() {
 
 loadStats();
 loadJobs();
+
+function logout() {
+  localStorage.removeItem("adminEmail");
+  window.location.href = "adminLogin.html";
+}
