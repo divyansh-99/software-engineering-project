@@ -41,14 +41,19 @@ exports.loginAdmin = (req, res) => {
 
   const { email, password } = req.body;
 
-  const fallbackEmail = "admin@spms.com";
-  const fallbackPassword = "admin123";
+  const bootstrapEmail = process.env.ADMIN_EMAIL;
+  const bootstrapPassword = process.env.ADMIN_PASSWORD;
 
-  if (email === fallbackEmail && password === fallbackPassword) {
+  if (
+    bootstrapEmail &&
+    bootstrapPassword &&
+    email === bootstrapEmail &&
+    password === bootstrapPassword
+  ) {
     return res.json({
       message: "Login successful",
       admin: {
-        email: fallbackEmail,
+        email: bootstrapEmail,
         name: "Placement Admin"
       }
     });
@@ -94,7 +99,8 @@ exports.loginAdmin = (req, res) => {
 
 exports.getAllStudents = (req, res) => {
 
-  const query = "SELECT * FROM students";
+  const query =
+    "SELECT student_id, name, email, roll_number, branch, cgpa FROM students";
 
   db.query(query, (err, results) => {
 
