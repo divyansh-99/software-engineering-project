@@ -2,83 +2,63 @@ const db = require("../config/db");
 const bcrypt = require("bcrypt");
 
 exports.registerCompany = async (req, res) => {
-
   const { company_name, contact_email, password } = req.body;
+  const hashedPassword = await bcrypt.hash(password, 10);
+
+  const query = `
+    INSERT INTO companies (company_name, contact_email, password)
+    VALUES (?, ?, ?)
+  `;
 
   try {
-
-    const hashedPassword = await bcrypt.hash(password, 10);
-
-    const query = `
-      INSERT INTO companies
-      (company_name, contact_email, password)
-      VALUES (?, ?, ?)
-    `;
-
-    db.query(query, [company_name, contact_email, hashedPassword], (err, result) => {
-
-      if (err) {
-        console.error(err);
-        return res.status(500).json({ message: "Company registration failed" });
-      }
-
-      res.status(201).json({
-        message: "Company registered successfully"
-      });
-
-    });
-
+    await db.promise().query(query, [
+      company_name,
+      contact_email,
+      hashedPassword
+    ]);
   } catch (error) {
+    if (error.code === "ER_DUP_ENTRY") {
+      return res.status(400).json({ message: "Company email already exists" });
+    }
 
-    console.error(error);
-    res.status(500).json({ message: "Server error" });
-
+    throw error;
   }
 
+  return res.status(201).json({
+    message: "Company registered successfully"
+  });
 };
 
-
-exports.loginCompany = (req, res) => {
-
+exports.loginCompany = async (req, res) => {
   const { contact_email, password } = req.body;
 
-  const query = "SELECT * FROM companies WHERE contact_email = ?";
+  const [results] = await db.promise().query(
+    "SELECT * FROM companies WHERE contact_email = ?",
+    [contact_email]
+  );
 
-  db.query(query, [contact_email], async (err, results) => {
+  if (results.length === 0) {
+    return res.status(401).json({ message: "Invalid email or password" });
+  }
 
-    if (err) {
-      console.error(err);
-      return res.status(500).json({ message: "Server error" });
+  const company = results[0];
+  const isMatch = await bcrypt.compare(password, company.password);
+
+  if (!isMatch) {
+    return res.status(401).json({ message: "Invalid email or password" });
+  }
+
+  return res.json({
+    message: "Login successful",
+    company: {
+      id: company.company_id,
+      name: company.company_name,
+      email: company.contact_email
     }
-
-    if (results.length === 0) {
-      return res.status(401).json({ message: "Invalid email or password" });
-    }
-
-    const company = results[0];
-
-    const isMatch = await bcrypt.compare(password, company.password);
-
-    if (!isMatch) {
-      return res.status(401).json({ message: "Invalid email or password" });
-    }
-
-    res.json({
-      message: "Login successful",
-      company: {
-        id: company.company_id,
-        name: company.company_name,
-        email: company.contact_email
-      }
-    });
-
   });
-
 };
 
-
-exports.postJob = (req, res) => {
-
+exports.postJob = async (req, res) => {
   const {
     company_id,
     title,
@@ -91,31 +71,26 @@ exports.postJob = (req, res) => {
 
   const query = `
     INSERT INTO jobs
-    (company_id, title, description, min_cgpa, branch_allowed, package_lpa, deadline)
+      (company_id, title, description, min_cgpa, branch_allowed, package_lpa, deadline)
     VALUES (?, ?, ?, ?, ?, ?, ?)
   `;
 
-  db.query(
-    query,
-    [company_id, title, description, min_cgpa, branch_allowed, package_lpa, deadline],
-    (err, result) => {
+  await db.promise().query(query, [
+    company_id,
+    title,
+    description,
+    min_cgpa,
+    branch_allowed,
+    package_lpa,
+    deadline
+  ]);
 
-      if (err) {
-        console.error(err);
-        return res.status(500).json({ message: "Job posting failed" });
-      }
-
-      res.status(201).json({
-        message: "Job posted successfully"
-      });
-
-    }
-  );
-
+  return res.status(201).json({
+    message: "Job posted successfully"
+  });
 };
 
-exports.getCompanyJobs = (req, res) => {
-
+exports.getCompanyJobs = async (req, res) => {
   const { company_id } = req.params;
 
   const query = `
@@ -125,21 +100,11 @@ exports.getCompanyJobs = (req, res) => {
     ORDER BY job_id DESC
   `;
 
-  db.query(query, [company_id], (err, results) => {
-
-    if (err) {
-      console.error(err);
-      return res.status(500).json({ message: "Failed to fetch company jobs" });
-    }
-
-    res.json(results);
-
-  });
-
+  const [results] = await db.promise().query(query, [company_id]);
+  return res.json(results);
 };
 
-exports.getCompanyApplications = (req, res) => {
-
+exports.getCompanyApplications = async (req, res) => {
   const { company_id } = req.params;
 
   const query = `
@@ -162,21 +127,11 @@ exports.getCompanyApplications = (req, res) => {
     ORDER BY applications.applied_at DESC
   `;
 
-  db.query(query, [company_id], (err, results) => {
-
-    if (err) {
-      console.error(err);
-      return res.status(500).json({ message: "Failed to fetch applications" });
-    }
-
-    res.json(results);
-
-  });
-
+  const [results] = await db.promise().query(query, [company_id]);
+  return res.json(results);
 };
 
-exports.updateCompanyApplicationStatus = (req, res) => {
-
+exports.updateCompanyApplicationStatus = async (req, res) => {
   const { company_id, application_id, status } = req.body;
 
   const statusMap = {
@@ -198,22 +153,22 @@ exports.updateCompanyApplicationStatus = (req, res) => {
     JOIN jobs ON applications.job_id = jobs.job_id
     SET applications.status = ?
     WHERE applications.application_id = ?
-    AND jobs.company_id = ?
+      AND jobs.company_id = ?
   `;
 
-  db.query(query, [normalizedStatus, application_id, company_id], (err, result) => {
+  const [result] = await db.promise().query(query, [
+    normalizedStatus,
+    application_id,
+    company_id
+  ]);
 
-    if (err) {
-      console.error(err);
-      return res.status(500).json({ message: "Failed to update application status" });
-    }
+  if (result.affectedRows === 0) {
+    return res.status(404).json({
+      message: "Application not found for this company"
+    });
+  }
 
-    if (result.affectedRows === 0) {
-      return res.status(404).json({ message: "Application not found for this company" });
-    }
-
-    res.json({ message: `Application ${status.toLowerCase()} successfully` });
-
+  return res.json({
+    message: `Application ${status.toLowerCase()} successfully`
   });
-
 };

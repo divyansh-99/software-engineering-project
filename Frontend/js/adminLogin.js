@@ -1,5 +1,6 @@
 const API_BASE = window.location.protocol === "file:" ? "http://localhost:5000" : "";
 const USE_DEMO_DATA = window.SPMSDataService && window.SPMSDataService.useDemo;
+const { getErrorMessage, logError, requestJson } = window.SPMSApi;
 
 const form = document.getElementById("loginForm");
 
@@ -15,14 +16,13 @@ form.addEventListener("submit", async function (e) {
     if (USE_DEMO_DATA) {
       data = await window.SPMSDataService.loginAdmin({ email, password });
     } else {
-      const response = await fetch(`${API_BASE}/api/admin/login`, {
+      data = await requestJson(`${API_BASE}/api/admin/login`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json"
         },
         body: JSON.stringify({ email, password })
       });
-      data = await response.json();
     }
 
     if (data.admin) {
@@ -32,7 +32,10 @@ form.addEventListener("submit", async function (e) {
       document.getElementById("message").innerText = data.message;
     }
   } catch (error) {
-    console.error(error);
-    document.getElementById("message").innerText = "Server error";
+    logError(error);
+    document.getElementById("message").innerText = getErrorMessage(
+      error,
+      "Server error"
+    );
   }
 });

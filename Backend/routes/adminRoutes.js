@@ -19,6 +19,5 @@ router.get("/applications", getAllApplications);
 
 router.put("/update-status", updateApplicationStatus);
 router.get("/stats", getPlacementStats);
-router.get("/jobs", getAllJobs);
 
 module.exports = router;

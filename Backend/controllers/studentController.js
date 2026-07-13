@@ -2,253 +2,137 @@ const db = require("../config/db");
 const bcrypt = require("bcrypt");
 
 exports.registerStudent = async (req, res) => {
-    const { name, email, password, roll_number, branch, cgpa } = req.body;
+  const { name, email, password, roll_number, branch, cgpa } = req.body;
+  const hashedPassword = await bcrypt.hash(password, 10);
 
-    try {
-
-        // Hash password
-        const hashedPassword = await bcrypt.hash(password, 10);
-
-        const query = `
-        INSERT INTO students 
-        (name, email, password, roll_number, branch, cgpa)
-        VALUES (?, ?, ?, ?, ?, ?)
-        `;
-
-        db.query(
-            query,
-            [name, email, hashedPassword, roll_number, branch, cgpa],
-            (err, result) => {
-
-                if (err) {
-                    console.error(err);
-                    return res.status(500).json({ message: "Registration failed" });
-                }
-
-                res.status(201).json({
-                    message: "Student registered successfully"
-                });
-            }
-        );
-
-    } catch (error) {
-        console.error(error);
-        res.status(500).json({ message: "Server error" });
-    }
-};
-
-
-exports.loginStudent = (req, res) => {
-
-  const { email, password } = req.body;
-
-  const query = "SELECT * FROM students WHERE email = ?";
-
-  db.query(query, [email], async (err, results) => {
-
-    if (err) {
-      console.error(err);
-      return res.status(500).json({ message: "Server error" });
-    }
-
-    if (results.length === 0) {
-      console.log("No user found");
-      return res.status(401).json({ message: "Invalid email or password" });
-    }
-
-    const student = results[0];
-
-    console.log("Entered password:", password);
-    console.log("Stored hash:", student.password);
-
-    const bcrypt = require("bcrypt");
-
-    const isMatch = await bcrypt.compare(password, student.password);
-
-    console.log("Password match result:", isMatch);
-
-    if (!isMatch) {
-      return res.status(401).json({ message: "Invalid email or password" });
-    }
-
-    res.json({
-      message: "Login successful",
-      student: {
-        id: student.student_id,
-        name: student.name,
-        email: student.email
-      }
-    });
-
-  });
-
-};
-
-
-exports.applyJob = (req, res) => {
-
-  const { student_id, job_id } = req.body;
-
-  const checkQuery = `
-  SELECT * FROM applications
-  WHERE student_id = ? AND job_id = ?
+  const query = `
+    INSERT INTO students
+      (name, email, password, roll_number, branch, cgpa)
+    VALUES (?, ?, ?, ?, ?, ?)
   `;
 
-  db.query(checkQuery, [student_id, job_id], (err, results) => {
-
-    if (err) {
-      console.error(err);
-      return res.status(500).json({ message: "Server error" });
+  try {
+    await db.promise().query(query, [
+      name,
+      email,
+      hashedPassword,
+      roll_number,
+      branch,
+      cgpa
+    ]);
+  } catch (error) {
+    if (error.code === "ER_DUP_ENTRY") {
+      return res.status(400).json({ message: "Student email already exists" });
     }
 
-    if (results.length > 0) {
+    throw error;
+  }
+
+  return res.status(201).json({
+    message: "Student registered successfully"
+  });
+};
+
+exports.loginStudent = async (req, res) => {
+  const { email, password } = req.body;
+
+  const [results] = await db.promise().query(
+    "SELECT * FROM students WHERE email = ?",
+    [email]
+  );
+
+  if (results.length === 0) {
+    return res.status(401).json({ message: "Invalid email or password" });
+  }
+
+  const student = results[0];
+  const isMatch = await bcrypt.compare(password, student.password);
+
+  if (!isMatch) {
+    return res.status(401).json({ message: "Invalid email or password" });
+  }
+
+  return res.json({
+    message: "Login successful",
+    student: {
+      id: student.student_id,
+      name: student.name,
+      email: student.email
+    }
+  });
+};
+
+exports.applyJob = async (req, res) => {
+  const { student_id, job_id } = req.body;
+
+  const [existingApplications] = await db.promise().query(
+    "SELECT application_id FROM applications WHERE student_id = ? AND job_id = ?",
+    [student_id, job_id]
+  );
+
+  if (existingApplications.length > 0) {
+    return res.status(400).json({
+      message: "You have already applied to this job"
+    });
+  }
+
+  try {
+    await db.promise().query(
+      "INSERT INTO applications (student_id, job_id) VALUES (?, ?)",
+      [student_id, job_id]
+    );
+  } catch (error) {
+    if (error.code === "ER_DUP_ENTRY") {
       return res.status(400).json({
         message: "You have already applied to this job"
       });
     }
 
-    const insertQuery = `
-    INSERT INTO applications (student_id, job_id)
-    VALUES (?, ?)
-    `;
+    throw error;
+  }
 
-    db.query(insertQuery, [student_id, job_id], (err, result) => {
-
-      if (err) {
-        console.error(err);
-        return res.status(500).json({ message: "Application failed" });
-      }
-
-      res.status(201).json({
-        message: "Job applied successfully"
-      });
-
-    });
-
+  return res.status(201).json({
+    message: "Job applied successfully"
   });
-
 };
 
-exports.getEligibleJobs = (req, res) => {
+exports.getEligibleJobs = async (req, res) => {
+  const { student_id } = req.params;
 
-const student_id = req.params.student_id;
+  const query = `
+    SELECT jobs.*,
+           applications.application_id,
+           applications.status AS application_status
+    FROM jobs
+    LEFT JOIN applications
+      ON jobs.job_id = applications.job_id
+      AND applications.student_id = ?
+    JOIN students ON students.student_id = ?
+    WHERE students.cgpa >= jobs.min_cgpa
+      AND students.branch = jobs.branch_allowed
+  `;
 
-const query = `
-SELECT jobs.*,
-applications.application_id
+  const [results] = await db.promise().query(query, [
+    student_id,
+    student_id
+  ]);
 
-FROM jobs
-
-LEFT JOIN applications
-ON jobs.job_id = applications.job_id
-AND applications.student_id = ?
-
-JOIN students
-ON students.student_id = ?
-
-WHERE students.cgpa >= jobs.min_cgpa
-AND students.branch = jobs.branch_allowed
-`;
-
-db.query(query,[student_id,student_id],(err,results)=>{
-
-if(err){
-console.error(err);
-return res.status(500).json({message:"Server error"});
-}
-
-res.json(results);
-
-});
-
+  return res.json(results);
 };
 
+exports.getAppliedJobs = async (req, res) => {
+  const { student_id } = req.params;
 
-exports.getAppliedJobs = (req, res) => {
+  const query = `
+    SELECT jobs.title,
+           jobs.package_lpa,
+           applications.status,
+           applications.applied_at
+    FROM applications
+    JOIN jobs ON applications.job_id = jobs.job_id
+    WHERE applications.student_id = ?
+  `;
 
-const student_id = req.params.student_id;
-
-const query = `
-SELECT jobs.title,
-jobs.package_lpa,
-applications.status,
-applications.applied_at
-
-FROM applications
-JOIN jobs ON applications.job_id = jobs.job_id
-
-WHERE applications.student_id = ?
-`;
-
-db.query(query, [student_id], (err, results) => {
-
-if(err){
-console.error(err);
-return res.status(500).json({message:"Failed to fetch applied jobs"});
-}
-
-res.json(results);
-
-});
-
+  const [results] = await db.promise().query(query, [student_id]);
+  return res.json(results);
 };
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-/*without password matching
-exports.loginStudent = async (req, res) => {
-
-  const { email, password } = req.body;
-
-  const query = "SELECT * FROM students WHERE email = ?";
-
-  db.query(query, [email], async (err, results) => {
-
-    if (err) {
-      console.error(err);
-      return res.status(500).json({ message: "Server error" });
-    }
-
-    if (results.length === 0) {
-      return res.status(401).json({ message: "Invalid email or password" });
-    }
-
-    const student = results[0];
-
-    const bcrypt = require("bcrypt");
-
-    const isMatch = await bcrypt.compare(password, student.password);
-
-    if (!isMatch) {
-      return res.status(401).json({ message: "Invalid email or password" });
-    }
-
-    res.json({
-      message: "Login successful",
-      student: {
-        id: student.student_id,
-        name: student.name,
-        email: student.email
-      }
-    });
-
-  });
-
-};*/
