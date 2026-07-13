@@ -28,6 +28,7 @@
       const error = new Error(
         data.message || `Request failed with status ${response.status}`
       );
+      error.name = "HttpError";
       error.status = response.status;
       throw error;
     }
@@ -40,7 +41,7 @@
   }
 
   function logError(error) {
-    if (!error.status || error.status >= 500) {
+    if (error.name !== "HttpError" || error.status >= 500) {
       console.error(error);
     }
   }
