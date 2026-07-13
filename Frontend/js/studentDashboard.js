@@ -1,45 +1,10 @@
-const API_BASE = window.location.protocol === "file:" ? "http://localhost:5000" : "";
-const USE_DEMO_DATA = window.SPMSDataService && window.SPMSDataService.useDemo;
-
-const studentId = localStorage.getItem("studentId");
-
-if (!studentId) {
-  window.location.href = "studentLogin.html";
-}
-
-function getStatusClass(status) {
-  if (status === "Accepted" || status === "Selected") {
-    return "status-pill status-accepted";
-  }
-
-  if (status === "Rejected") {
-    return "status-pill status-rejected";
-  }
-
-  return "status-pill status-pending";
-}
-
-function getStatusLabel(status) {
-  if (status === "Selected") {
-    return "Accepted";
-  }
-
-  if (status === "Applied") {
-    return "Pending";
-  }
-
-  return status;
-}
+const studentId = window.SPMSUtils.requireSession("studentId", "studentLogin.html");
 
 async function loadJobs() {
-  let jobs;
-
-  if (USE_DEMO_DATA) {
-    jobs = await window.SPMSDataService.getEligibleJobs(studentId);
-  } else {
-    const response = await fetch(`${API_BASE}/api/students/eligible-jobs/${studentId}`);
-    jobs = await response.json();
-  }
+  const { data: jobs } = await window.SPMSUtils.request({
+    demo: (service) => service.getEligibleJobs(studentId),
+    path: `/api/students/eligible-jobs/${studentId}`
+  });
 
   const jobsDiv = document.getElementById("jobs");
   jobsDiv.innerHTML = "";
@@ -60,7 +25,7 @@ async function loadJobs() {
 </div>
 ${
   job.application_id
-    ? `<span class="${getStatusClass(job.application_status || "Applied")}">Status: ${getStatusLabel(job.application_status || "Applied")}</span>`
+    ? `<span class="${window.SPMSUtils.getStatusClass(job.application_status || "Applied")}">Status: ${window.SPMSUtils.getStatusLabel(job.application_status || "Applied")}</span>`
     : `<button onclick="applyJob(${job.job_id})">Apply</button>`
 }
 </div>
@@ -69,46 +34,27 @@ ${
 }
 
 async function applyJob(jobId) {
-  let data;
-
-  if (USE_DEMO_DATA) {
-    data = await window.SPMSDataService.applyJob({
-      student_id: studentId,
-      job_id: jobId
-    });
-  } else {
-    const response = await fetch(`${API_BASE}/api/students/apply-job`, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json"
-      },
-      body: JSON.stringify({
-        student_id: studentId,
-        job_id: jobId
-      })
-    });
-    data = await response.json();
-  }
+  const payload = {
+    student_id: studentId,
+    job_id: jobId
+  };
+  const { data } = await window.SPMSUtils.request({
+    demo: (service) => service.applyJob(payload),
+    path: "/api/students/apply-job",
+    method: "POST",
+    body: payload
+  });
 
   alert(data.message);
   loadJobs();
   loadAppliedJobs();
 }
 
-function logout() {
-  localStorage.removeItem("studentId");
-  window.location.href = "studentLogin.html";
-}
-
 async function loadAppliedJobs() {
-  let jobs;
-
-  if (USE_DEMO_DATA) {
-    jobs = await window.SPMSDataService.getAppliedJobs(studentId);
-  } else {
-    const response = await fetch(`${API_BASE}/api/students/applied-jobs/${studentId}`);
-    jobs = await response.json();
-  }
+  const { data: jobs } = await window.SPMSUtils.request({
+    demo: (service) => service.getAppliedJobs(studentId),
+    path: `/api/students/applied-jobs/${studentId}`
+  });
 
   const appliedDiv = document.getElementById("appliedJobs");
   appliedDiv.innerHTML = "";
@@ -124,7 +70,7 @@ async function loadAppliedJobs() {
 <h3>${job.title}</h3>
 <div class="job-meta">
 <span class="meta-pill">Package: ${job.package_lpa} LPA</span>
-<span class="${getStatusClass(job.status)}">Status: ${getStatusLabel(job.status)}</span>
+<span class="${window.SPMSUtils.getStatusClass(job.status)}">Status: ${window.SPMSUtils.getStatusLabel(job.status)}</span>
 </div>
 </div>
 `;

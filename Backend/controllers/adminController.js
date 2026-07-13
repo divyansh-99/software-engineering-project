@@ -110,24 +110,6 @@ exports.getAllStudents = (req, res) => {
 };
 
 
-exports.getAllJobs = (req, res) => {
-
-  const query = "SELECT * FROM jobs";
-
-  db.query(query, (err, results) => {
-
-    if (err) {
-      console.error(err);
-      return res.status(500).json({ message: "Failed to fetch jobs" });
-    }
-
-    res.json(results);
-
-  });
-
-};
-
-
 exports.getAllApplications = (req, res) => {
 
   const query = `
