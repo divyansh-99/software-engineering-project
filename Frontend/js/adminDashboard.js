@@ -1,5 +1,6 @@
 const API_BASE = window.location.protocol === "file:" ? "http://localhost:5000" : "";
 const USE_DEMO_DATA = window.SPMSDataService && window.SPMSDataService.useDemo;
+const { getErrorMessage, logError, requestJson } = window.SPMSApi;
 const adminEmail = localStorage.getItem("adminEmail");
 
 if (!adminEmail) {
@@ -12,8 +13,7 @@ async function loadStats() {
   if (USE_DEMO_DATA) {
     data = await window.SPMSDataService.getAdminStats();
   } else {
-    const response = await fetch(`${API_BASE}/api/admin/stats`);
-    data = await response.json();
+    data = await requestJson(`${API_BASE}/api/admin/stats`);
   }
 
   document.getElementById("stats").innerHTML = `
@@ -42,8 +42,7 @@ async function loadJobs() {
   if (USE_DEMO_DATA) {
     jobs = await window.SPMSDataService.getAdminJobs();
   } else {
-    const response = await fetch(`${API_BASE}/api/admin/jobs`);
-    jobs = await response.json();
+    jobs = await requestJson(`${API_BASE}/api/admin/jobs`);
   }
 
   const jobsDiv = document.getElementById("jobs");
@@ -68,8 +67,18 @@ async function loadJobs() {
   });
 }
 
-loadStats();
-loadJobs();
+function showLoadError(containerId, error) {
+  logError(error);
+
+  const container = document.getElementById(containerId);
+  const message = document.createElement("div");
+  message.className = "empty-state";
+  message.textContent = getErrorMessage(error, "Unable to load data");
+  container.replaceChildren(message);
+}
+
+loadStats().catch((error) => showLoadError("stats", error));
+loadJobs().catch((error) => showLoadError("jobs", error));
 
 function logout() {
   localStorage.removeItem("adminEmail");

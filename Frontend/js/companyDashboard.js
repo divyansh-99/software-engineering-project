@@ -1,5 +1,6 @@
 const API_BASE = window.location.protocol === "file:" ? "http://localhost:5000" : "";
 const USE_DEMO_DATA = window.SPMSDataService && window.SPMSDataService.useDemo;
+const { getErrorMessage, logError, requestJson } = window.SPMSApi;
 
 const companyId = localStorage.getItem("companyId");
 
@@ -21,21 +22,31 @@ form.addEventListener("submit", async function (e) {
     branch_allowed: document.getElementById("branch").value
   };
 
-  if (USE_DEMO_DATA) {
-    await window.SPMSDataService.postJob(payload);
-  } else {
-    await fetch(`${API_BASE}/api/companies/post-job`, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json"
-      },
-      body: JSON.stringify(payload)
-    });
-  }
+  try {
+    let data;
 
-  form.reset();
-  loadJobs();
-  loadApplications();
+    if (USE_DEMO_DATA) {
+      data = await window.SPMSDataService.postJob(payload);
+      if (!data.ok) {
+        throw new Error(data.message);
+      }
+    } else {
+      data = await requestJson(`${API_BASE}/api/companies/post-job`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json"
+        },
+        body: JSON.stringify(payload)
+      });
+    }
+
+    form.reset();
+    alert(data.message);
+    await Promise.all([loadJobs(), loadApplications()]);
+  } catch (error) {
+    logError(error);
+    alert(getErrorMessage(error, "Unable to post job"));
+  }
 });
 
 function getStatusClass(status){
@@ -72,8 +83,7 @@ async function loadJobs() {
   if (USE_DEMO_DATA) {
     jobs = await window.SPMSDataService.getCompanyJobs(companyId);
   } else {
-    const response = await fetch(`${API_BASE}/api/companies/jobs/${companyId}`);
-    jobs = await response.json();
+    jobs = await requestJson(`${API_BASE}/api/companies/jobs/${companyId}`);
   }
 
   const jobsDiv = document.getElementById("jobs");
@@ -103,8 +113,9 @@ async function loadApplications() {
   if (USE_DEMO_DATA) {
     applications = await window.SPMSDataService.getCompanyApplications(companyId);
   } else {
-    const response = await fetch(`${API_BASE}/api/companies/applications/${companyId}`);
-    applications = await response.json();
+    applications = await requestJson(
+      `${API_BASE}/api/companies/applications/${companyId}`
+    );
   }
 
   const applicationsDiv = document.getElementById("applications");
@@ -137,31 +148,51 @@ async function loadApplications() {
 }
 
 async function updateApplicationStatus(applicationId, status) {
-  let data;
+  try {
+    let data;
 
-  if (USE_DEMO_DATA) {
-    data = await window.SPMSDataService.updateCompanyApplicationStatus({
-      company_id: companyId,
-      application_id: applicationId,
-      status
-    });
-  } else {
-    const response = await fetch(`${API_BASE}/api/companies/applications/status`, {
-      method: "PUT",
-      headers: {
-        "Content-Type": "application/json"
-      },
-      body: JSON.stringify({
+    if (USE_DEMO_DATA) {
+      data = await window.SPMSDataService.updateCompanyApplicationStatus({
         company_id: companyId,
         application_id: applicationId,
         status
-      })
-    });
-    data = await response.json();
-  }
+      });
+      if (!data.ok) {
+        throw new Error(data.message);
+      }
+    } else {
+      data = await requestJson(
+        `${API_BASE}/api/companies/applications/status`,
+        {
+          method: "PUT",
+          headers: {
+            "Content-Type": "application/json"
+          },
+          body: JSON.stringify({
+            company_id: companyId,
+            application_id: applicationId,
+            status
+          })
+        }
+      );
+    }
 
-  alert(data.message);
-  loadApplications();
+    alert(data.message);
+    await loadApplications();
+  } catch (error) {
+    logError(error);
+    alert(getErrorMessage(error, "Unable to update application"));
+  }
+}
+
+function showLoadError(containerId, error) {
+  logError(error);
+
+  const container = document.getElementById(containerId);
+  const message = document.createElement("div");
+  message.className = "empty-state";
+  message.textContent = getErrorMessage(error, "Unable to load data");
+  container.replaceChildren(message);
 }
 
 function logout(){
@@ -172,5 +203,5 @@ window.location.href="companyLogin.html";
 
 }
 
-loadJobs();
-loadApplications();
+loadJobs().catch((error) => showLoadError("jobs", error));
+loadApplications().catch((error) => showLoadError("applications", error));

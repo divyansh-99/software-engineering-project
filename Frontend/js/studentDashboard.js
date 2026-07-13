@@ -1,5 +1,6 @@
 const API_BASE = window.location.protocol === "file:" ? "http://localhost:5000" : "";
 const USE_DEMO_DATA = window.SPMSDataService && window.SPMSDataService.useDemo;
+const { getErrorMessage, logError, requestJson } = window.SPMSApi;
 
 const studentId = localStorage.getItem("studentId");
 
@@ -37,8 +38,9 @@ async function loadJobs() {
   if (USE_DEMO_DATA) {
     jobs = await window.SPMSDataService.getEligibleJobs(studentId);
   } else {
-    const response = await fetch(`${API_BASE}/api/students/eligible-jobs/${studentId}`);
-    jobs = await response.json();
+    jobs = await requestJson(
+      `${API_BASE}/api/students/eligible-jobs/${studentId}`
+    );
   }
 
   const jobsDiv = document.getElementById("jobs");
@@ -69,30 +71,36 @@ ${
 }
 
 async function applyJob(jobId) {
-  let data;
+  try {
+    let data;
 
-  if (USE_DEMO_DATA) {
-    data = await window.SPMSDataService.applyJob({
-      student_id: studentId,
-      job_id: jobId
-    });
-  } else {
-    const response = await fetch(`${API_BASE}/api/students/apply-job`, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json"
-      },
-      body: JSON.stringify({
+    if (USE_DEMO_DATA) {
+      data = await window.SPMSDataService.applyJob({
         student_id: studentId,
         job_id: jobId
-      })
-    });
-    data = await response.json();
-  }
+      });
+      if (!data.ok) {
+        throw new Error(data.message);
+      }
+    } else {
+      data = await requestJson(`${API_BASE}/api/students/apply-job`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json"
+        },
+        body: JSON.stringify({
+          student_id: studentId,
+          job_id: jobId
+        })
+      });
+    }
 
-  alert(data.message);
-  loadJobs();
-  loadAppliedJobs();
+    alert(data.message);
+    await Promise.all([loadJobs(), loadAppliedJobs()]);
+  } catch (error) {
+    logError(error);
+    alert(getErrorMessage(error, "Unable to apply for job"));
+  }
 }
 
 function logout() {
@@ -106,8 +114,9 @@ async function loadAppliedJobs() {
   if (USE_DEMO_DATA) {
     jobs = await window.SPMSDataService.getAppliedJobs(studentId);
   } else {
-    const response = await fetch(`${API_BASE}/api/students/applied-jobs/${studentId}`);
-    jobs = await response.json();
+    jobs = await requestJson(
+      `${API_BASE}/api/students/applied-jobs/${studentId}`
+    );
   }
 
   const appliedDiv = document.getElementById("appliedJobs");
@@ -131,5 +140,15 @@ async function loadAppliedJobs() {
   });
 }
 
-loadJobs();
-loadAppliedJobs();
+function showLoadError(containerId, error) {
+  logError(error);
+
+  const container = document.getElementById(containerId);
+  const message = document.createElement("div");
+  message.className = "empty-state";
+  message.textContent = getErrorMessage(error, "Unable to load data");
+  container.replaceChildren(message);
+}
+
+loadJobs().catch((error) => showLoadError("jobs", error));
+loadAppliedJobs().catch((error) => showLoadError("appliedJobs", error));

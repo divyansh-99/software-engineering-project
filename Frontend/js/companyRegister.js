@@ -1,5 +1,6 @@
 const API_BASE = window.location.protocol === "file:" ? "http://localhost:5000" : "";
 const USE_DEMO_DATA = window.SPMSDataService && window.SPMSDataService.useDemo;
+const { getErrorMessage, logError, requestJson } = window.SPMSApi;
 
 const form = document.getElementById("registerForm");
 
@@ -20,15 +21,14 @@ form.addEventListener("submit", async function (e) {
       data = await window.SPMSDataService.registerCompany(payload);
       ok = data.ok;
     } else {
-      const response = await fetch(`${API_BASE}/api/companies/register`, {
+      data = await requestJson(`${API_BASE}/api/companies/register`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json"
         },
         body: JSON.stringify(payload)
       });
-      data = await response.json();
-      ok = response.ok;
+      ok = true;
     }
 
     document.getElementById("message").innerText = data.message;
@@ -40,7 +40,10 @@ form.addEventListener("submit", async function (e) {
       }, 1200);
     }
   } catch (error) {
-    console.error(error);
-    document.getElementById("message").innerText = "Server error";
+    logError(error);
+    document.getElementById("message").innerText = getErrorMessage(
+      error,
+      "Server error"
+    );
   }
 });
