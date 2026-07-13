@@ -58,14 +58,7 @@ exports.loginStudent = (req, res) => {
 
     const student = results[0];
 
-    console.log("Entered password:", password);
-    console.log("Stored hash:", student.password);
-
-    const bcrypt = require("bcrypt");
-
     const isMatch = await bcrypt.compare(password, student.password);
-
-    console.log("Password match result:", isMatch);
 
     if (!isMatch) {
       return res.status(401).json({ message: "Invalid email or password" });
