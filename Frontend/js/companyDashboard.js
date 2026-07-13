@@ -1,11 +1,4 @@
-const API_BASE = window.location.protocol === "file:" ? "http://localhost:5000" : "";
-const USE_DEMO_DATA = window.SPMSDataService && window.SPMSDataService.useDemo;
-
-const companyId = localStorage.getItem("companyId");
-
-if (!companyId) {
-  window.location.href = "companyLogin.html";
-}
+const companyId = window.SPMSUtils.requireSession("companyId", "companyLogin.html");
 
 const form = document.getElementById("jobForm");
 
@@ -21,60 +14,23 @@ form.addEventListener("submit", async function (e) {
     branch_allowed: document.getElementById("branch").value
   };
 
-  if (USE_DEMO_DATA) {
-    await window.SPMSDataService.postJob(payload);
-  } else {
-    await fetch(`${API_BASE}/api/companies/post-job`, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json"
-      },
-      body: JSON.stringify(payload)
-    });
-  }
+  await window.SPMSUtils.request({
+    demo: (service) => service.postJob(payload),
+    path: "/api/companies/post-job",
+    method: "POST",
+    body: payload
+  });
 
   form.reset();
   loadJobs();
   loadApplications();
 });
 
-function getStatusClass(status){
-
-if(status === "Accepted" || status === "Selected"){
-return "status-pill status-accepted";
-}
-
-if(status === "Rejected"){
-return "status-pill status-rejected";
-}
-
-return "status-pill status-pending";
-
-}
-
-function getStatusLabel(status){
-
-if(status === "Selected"){
-return "Accepted";
-}
-
-if(status === "Applied"){
-return "Pending";
-}
-
-return status;
-
-}
-
 async function loadJobs() {
-  let jobs;
-
-  if (USE_DEMO_DATA) {
-    jobs = await window.SPMSDataService.getCompanyJobs(companyId);
-  } else {
-    const response = await fetch(`${API_BASE}/api/companies/jobs/${companyId}`);
-    jobs = await response.json();
-  }
+  const { data: jobs } = await window.SPMSUtils.request({
+    demo: (service) => service.getCompanyJobs(companyId),
+    path: `/api/companies/jobs/${companyId}`
+  });
 
   const jobsDiv = document.getElementById("jobs");
   jobsDiv.innerHTML = "";
@@ -98,14 +54,10 @@ async function loadJobs() {
 }
 
 async function loadApplications() {
-  let applications;
-
-  if (USE_DEMO_DATA) {
-    applications = await window.SPMSDataService.getCompanyApplications(companyId);
-  } else {
-    const response = await fetch(`${API_BASE}/api/companies/applications/${companyId}`);
-    applications = await response.json();
-  }
+  const { data: applications } = await window.SPMSUtils.request({
+    demo: (service) => service.getCompanyApplications(companyId),
+    path: `/api/companies/applications/${companyId}`
+  });
 
   const applicationsDiv = document.getElementById("applications");
   applicationsDiv.innerHTML = "";
@@ -125,7 +77,7 @@ async function loadApplications() {
 <span class="meta-pill">Roll No: ${application.roll_number}</span>
 <span class="meta-pill">Branch: ${application.branch}</span>
 <span class="meta-pill">CGPA: ${application.cgpa}</span>
-<span class="${getStatusClass(application.status)}">Status: ${getStatusLabel(application.status)}</span>
+<span class="${window.SPMSUtils.getStatusClass(application.status)}">Status: ${window.SPMSUtils.getStatusLabel(application.status)}</span>
 </div>
 <div class="action-row">
 <button type="button" onclick="updateApplicationStatus(${application.application_id}, 'Accepted')">Accept</button>
@@ -137,39 +89,20 @@ async function loadApplications() {
 }
 
 async function updateApplicationStatus(applicationId, status) {
-  let data;
-
-  if (USE_DEMO_DATA) {
-    data = await window.SPMSDataService.updateCompanyApplicationStatus({
-      company_id: companyId,
-      application_id: applicationId,
-      status
-    });
-  } else {
-    const response = await fetch(`${API_BASE}/api/companies/applications/status`, {
-      method: "PUT",
-      headers: {
-        "Content-Type": "application/json"
-      },
-      body: JSON.stringify({
-        company_id: companyId,
-        application_id: applicationId,
-        status
-      })
-    });
-    data = await response.json();
-  }
+  const payload = {
+    company_id: companyId,
+    application_id: applicationId,
+    status
+  };
+  const { data } = await window.SPMSUtils.request({
+    demo: (service) => service.updateCompanyApplicationStatus(payload),
+    path: "/api/companies/applications/status",
+    method: "PUT",
+    body: payload
+  });
 
   alert(data.message);
   loadApplications();
-}
-
-function logout(){
-
-localStorage.removeItem("companyId");
-
-window.location.href="companyLogin.html";
-
 }
 
 loadJobs();

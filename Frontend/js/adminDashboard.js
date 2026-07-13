@@ -1,20 +1,10 @@
-const API_BASE = window.location.protocol === "file:" ? "http://localhost:5000" : "";
-const USE_DEMO_DATA = window.SPMSDataService && window.SPMSDataService.useDemo;
-const adminEmail = localStorage.getItem("adminEmail");
-
-if (!adminEmail) {
-  window.location.href = "adminLogin.html";
-}
+window.SPMSUtils.requireSession("adminEmail", "adminLogin.html");
 
 async function loadStats() {
-  let data;
-
-  if (USE_DEMO_DATA) {
-    data = await window.SPMSDataService.getAdminStats();
-  } else {
-    const response = await fetch(`${API_BASE}/api/admin/stats`);
-    data = await response.json();
-  }
+  const { data } = await window.SPMSUtils.request({
+    demo: (service) => service.getAdminStats(),
+    path: "/api/admin/stats"
+  });
 
   document.getElementById("stats").innerHTML = `
 <div class="stat-card">
@@ -37,14 +27,10 @@ async function loadStats() {
 }
 
 async function loadJobs() {
-  let jobs;
-
-  if (USE_DEMO_DATA) {
-    jobs = await window.SPMSDataService.getAdminJobs();
-  } else {
-    const response = await fetch(`${API_BASE}/api/admin/jobs`);
-    jobs = await response.json();
-  }
+  const { data: jobs } = await window.SPMSUtils.request({
+    demo: (service) => service.getAdminJobs(),
+    path: "/api/admin/jobs"
+  });
 
   const jobsDiv = document.getElementById("jobs");
   jobsDiv.innerHTML = "";
@@ -70,8 +56,3 @@ async function loadJobs() {
 
 loadStats();
 loadJobs();
-
-function logout() {
-  localStorage.removeItem("adminEmail");
-  window.location.href = "adminLogin.html";
-}
